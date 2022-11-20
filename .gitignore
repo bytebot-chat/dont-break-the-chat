@@ -13,3 +13,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# for my own safety
+*.yaml
+*.md
+*.txt
+*.json
+*.yml
