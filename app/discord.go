@@ -13,12 +13,13 @@ type Message struct {
 
 // handleIncomingMessage handles an incoming message from Bytebot/Discord.
 func handleIncomingMessage(m *redis.Message) (*Message, error) {
-	msg := &Message{}
-	err := msg.UnmarshalJSON([]byte(m.Payload))
+	bbmsg := &model.Message{}
+	err := bbmsg.UnmarshalJSON([]byte(m.Payload))
 	if err != nil {
 		return nil, err
 	}
-	return msg, nil
+
+	return &Message{bbmsg}, nil
 }
 
 // handleOutgoingMessage handles an outgoing message to Bytebot/Discord.

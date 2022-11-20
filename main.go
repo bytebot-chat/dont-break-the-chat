@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bytebot-chat/dont-break-the-chat/app"
 	dbtc "github.com/bytebot-chat/dont-break-the-chat/app"
 )
 
 func main() {
 	// Parse arguments from command line and environment variables
-	config, err := parseArgs()
-	if err != nil {
-		fmt.Errorf("failed to parse arguments: %w", err)
-		os.Exit(1)
+	config := dbtc.Config{
+		RedisHost:     "localhost",
+		RedisPort:     6379,
+		InboundTopic:  "discord-stable:inbound",
+		OutboundTopic: "discord-stable:outbound",
 	}
 
 	// Create a new app instance
@@ -28,8 +28,4 @@ func main() {
 		fmt.Errorf("failed to start app: %w", err)
 		os.Exit(1)
 	}
-}
-
-func parseArgs() (app.Config, error) {
-	return app.Config{}, nil
 }

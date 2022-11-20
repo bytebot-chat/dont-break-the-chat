@@ -25,15 +25,13 @@ func (a *App) Start() error {
 	// Connect to Redis
 	a.logger.Info().
 		Msg("connecting to redis")
-	redis, err := newRedis()
+	redis, err := newRedis(a.Config.RedisHost, a.Config.RedisPort, "", 0)
 	if err != nil {
 		return err
 	}
 	a.redis = redis
-
-	// Connect to discord
 	a.logger.Info().
-		Msg("connecting to discord")
+		Msg("connected to redis!")
 
 	// Start the inbound listener in an anonymous goroutine
 	go func() {
@@ -42,29 +40,17 @@ func (a *App) Start() error {
 		topic := a.redis.Subscribe(a.context, a.Config.InboundTopic)
 		channel := topic.Channel()
 		for msg := range channel {
-			handleIncomingMessage(msg)
 			a.logger.Info().
 				Msg("received message")
+			handleIncomingMessage(msg)
 		}
 	}()
 
-	return nil
-}
-
-// Stop stops the app.
-func (*App) Stop() error {
-	return nil
-}
-
-// Health returns a health check for the app.
-// May be polled by a load balancer or other monitoring service.
-func (*App) Health() error {
-	return nil
-}
-
-// Ready returns a readiness check for the app. This is used to indicate whether
-// the app is ready to receive traffic.
-func (*App) Ready() error {
+	a.logger.Info().
+		Msg("Holding the app open")
+	for {
+		//
+	}
 	return nil
 }
 
