@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/bytebot-chat/dont-break-the-chat/app"
+	dbtc "github.com/bytebot-chat/dont-break-the-chat/app"
 )
 
 func main() {
@@ -16,19 +17,19 @@ func main() {
 	}
 
 	// Create a new app instance
-	app := app.NewApp(config)
+	app, err := dbtc.NewApp(config)
+	if err != nil {
+		fmt.Errorf("failed to create app: %w", err)
+		os.Exit(1)
+	}
 
-	// Get a logger from the app
-	logger := app.NewLogger()
-
-	// Connect to redis
-	logger.Info().
-		Str("host", config.RedisHost()).
-		Msg("connecting to redis")
-	r, err := app.NewRedis()
-
+	// Start the app
+	if err := app.Start(); err != nil {
+		fmt.Errorf("failed to start app: %w", err)
+		os.Exit(1)
+	}
 }
 
 func parseArgs() (app.Config, error) {
-	return app.Args{}, nil
+	return app.Config{}, nil
 }
