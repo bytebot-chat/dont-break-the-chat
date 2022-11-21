@@ -7,5 +7,12 @@ import (
 )
 
 func (*App) NewLogger() zerolog.Logger {
-	return zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	// Create a new logger with the configured log level
+	// One thing per line to make it easier to read and track changes
+	return zerolog.New(os.Stdout).
+		Level(zerolog.DebugLevel).
+		With().
+		Timestamp().
+		Logger()
 }

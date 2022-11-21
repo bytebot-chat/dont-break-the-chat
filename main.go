@@ -5,6 +5,7 @@ import (
 	"os"
 
 	dbtc "github.com/bytebot-chat/dont-break-the-chat/app"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -12,8 +13,9 @@ func main() {
 	config := dbtc.Config{
 		RedisHost:     "localhost",
 		RedisPort:     6379,
-		InboundTopic:  "discord-stable:inbound",
-		OutboundTopic: "discord-stable:outbound",
+		InboundTopic:  "discord:inbound",
+		OutboundTopic: "discord:outbound",
+		LogLevel:      zerolog.Level(zerolog.DebugLevel),
 	}
 
 	// Create a new app instance

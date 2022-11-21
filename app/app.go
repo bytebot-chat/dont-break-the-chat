@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strings"
 
 	"github.com/rs/zerolog"
 )
@@ -37,12 +38,43 @@ func (a *App) Start() error {
 	go func() {
 		a.logger.Info().
 			Msg("starting inbound listener")
+
+		// Subscribe to the inbound topic on the redis pubsub
 		topic := a.redis.Subscribe(a.context, a.Config.InboundTopic)
+
+		// Create a go channel to receive messages from the topic
 		channel := topic.Channel()
+
+		// Iterate over the messages from the channel
 		for msg := range channel {
-			a.logger.Info().
+			a.logger.Debug().
 				Msg("received message")
-			handleIncomingMessage(msg)
+
+			// Unmarshal the message into a Message struct
+			m, err := unmarshalIncomingMessage(msg)
+			if err != nil {
+				a.logger.Error().
+					Err(err).
+					Msg("failed to unmarshal message")
+				continue // Skip this message and continue if we can't unmarshal it
+			}
+
+			// Handle the message. We are only interested in message that start with a command prefix for now.
+			if strings.HasPrefix(m.Content, "!") {
+				a.logger.Debug().
+					Msg("message is a command")
+
+				// the entrypoint for handling commands. located in app/commands.go
+				err = handleCommand(a, m)
+				if err != nil {
+					a.logger.Error().
+						Err(err).
+						Msg("error handling command")
+				}
+			} else {
+				a.logger.Debug().
+					Msg("message is not a command")
+			}
 		}
 	}()
 
