@@ -4,31 +4,30 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bytebot-chat/dont-break-the-chat/app"
+	dbtc "github.com/bytebot-chat/dont-break-the-chat/app"
+	"github.com/rs/zerolog"
 )
 
 func main() {
 	// Parse arguments from command line and environment variables
-	config, err := parseArgs()
-	if err != nil {
-		fmt.Errorf("failed to parse arguments: %w", err)
-		os.Exit(1)
+	config := dbtc.Config{
+		RedisHost:     "localhost",
+		RedisPort:     6379,
+		InboundTopic:  "discord:inbound",
+		OutboundTopic: "discord:outbound",
+		LogLevel:      zerolog.Level(zerolog.DebugLevel),
 	}
 
 	// Create a new app instance
-	app := app.NewApp(config)
+	app, err := dbtc.NewApp(config)
+	if err != nil {
+		fmt.Errorf("failed to create app: %w", err)
+		os.Exit(1)
+	}
 
-	// Get a logger from the app
-	logger := app.NewLogger()
-
-	// Connect to redis
-	logger.Info().
-		Str("host", config.RedisHost()).
-		Msg("connecting to redis")
-	r, err := app.NewRedis()
-
-}
-
-func parseArgs() (app.Config, error) {
-	return app.Args{}, nil
+	// Start the app
+	if err := app.Start(); err != nil {
+		fmt.Errorf("failed to start app: %w", err)
+		os.Exit(1)
+	}
 }
