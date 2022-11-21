@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -70,7 +71,25 @@ func handleWork(a *App, m *Message) error {
 // The amount of currency should eventually come from a function that takes the user's
 // profile and returns a scaled or leveled amount of currency.
 func handleWorkCommand(a *App, m *Message, args []string) error {
-	resp := m.RespondToChannelOrThread("dbtg", "You punched the clock and earned 0 currency.", true, false)
+	// Get the user's profile
+	profile, err := a.getProfile(m.Author.ID)
+	if err != nil {
+		return err
+	}
+
+	// Call the work method on the profile to update the balance and get the amount of currency earned
+	earned, err := profile.work(a)
+
+	// If there was an error, return it
+	if err != nil {
+		return err
+	}
+
+	// Otherwise, send a message to the channel or thread with the amount of currency earned
+	balance := strconv.Itoa(profile.Balance)
+	message := "You earned " + strconv.Itoa(earned) + " bucks. You now have " + balance + " bucks."
+	resp := m.RespondToChannelOrThread("dbtg", message, true, false)
+
 	return a.handleOutgoingMessage(resp)
 }
 
