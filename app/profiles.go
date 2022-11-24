@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"math/rand"
+	"strconv"
 )
 
 type Profile struct {
@@ -85,4 +86,9 @@ func (p *Profile) work(a *App) (int, error) {
 // getBalance returns the user's balance.
 func (p *Profile) getBalance() int {
 	return p.Balance
+}
+
+// getBalanceString returns the user's balance as a string.
+func (p *Profile) getBalanceString() string {
+	return strconv.Itoa(p.Balance)
 }
