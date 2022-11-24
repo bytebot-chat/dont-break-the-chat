@@ -8,9 +8,3 @@ type Inventory struct {
 	// The User's demerits
 	Demerits int `json:"demerits"`
 }
-
-// handleBalance handles the !balance command.
-// It should return the user's balance.
-func handleBalance(a *App, m *Message) error {
-	return nil
-}

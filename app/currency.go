@@ -20,6 +20,17 @@ At this point in time, the system is dead simple:
 
 */
 
+const balanceHelpResponse = `
+** Balance **
+Check your balance and see how much money you have.
+
+## Commands
+- !balance - Check your balance
+- !balance help - Get help with the balance system (you're looking at it)
+`
+
+const balanceUnknownCommandResponse = `I don't know what you mean by that. Try !balance help.`
+
 // handleBalance handles the !balance command. It represents the entrypoint for the currency system.
 // to parse the commands, each successive handler function should strip the 0th element from the splitCmd slice
 // and pass the rest of the slice to the next function until the command is fully parsed.
@@ -60,17 +71,26 @@ func handleBalance(a *App, m *Message) error {
 // handleBalanceCommand handles the bare !balance command.
 // It should return the user's current balance.
 func handleBalanceCommand(a *App, m *Message, args []string) error {
-	return nil
+	// Get the user's profile
+	profile, err := a.getProfile(m.Author.ID)
+	if err != nil {
+		return err
+	}
+
+	// Respond to the user with their balance
+	msg := m.RespondToChannelOrThread("dbtg", "Your balance is "+profile.getBalanceString()+" dollars", true, false)
+
+	return a.handleOutgoingMessage(msg)
 }
 
 // handleBalanceHelpCommand handles the !balance help command.
 // It should return a help message for the currency system.
 func handleBalanceHelpCommand(a *App, m *Message, args []string) error {
-	return nil
+	return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", balanceHelpResponse, true, false))
 }
 
 // handleBalanceUnknownCommand handles an unknown subcommand for the !balance command.
 // It should return an error message.
 func handleBalanceUnknownCommand(a *App, m *Message, args []string) error {
-	return nil
+	return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", balanceUnknownCommandResponse, true, false))
 }
