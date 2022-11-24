@@ -33,6 +33,8 @@ func handleCommand(a *App, m *Message) error {
 		return handleWork(a, m)
 	case "!balance":
 		return handleBalance(a, m)
+	case "!jobs":
+		return handleJobs(a, m)
 	default:
 		return handleUnknownCommand(a, m)
 	}

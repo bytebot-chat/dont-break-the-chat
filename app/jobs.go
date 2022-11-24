@@ -17,17 +17,17 @@ type Job struct {
 // handleJob handles the !job command. It represents the entrypoint for the job system.
 // to parse the commands, each successive handler function should strip the 0th element from the splitCmd slice
 // and pass the rest of the slice to the next function until the command is fully parsed.
-func handleJob(a *App, m *Message) error {
+func handleJobs(a *App, m *Message) error {
 	return nil
 }
 
-// handleJobList handles the !job list command. It lists all available jobs.
-func handleJobList(a *App, m *Message, splitCmd []string) error {
+// handleJobList handles the !jobs list command. It lists all available jobs.
+func handleJobsList(a *App, m *Message, splitCmd []string) error {
 	return nil
 }
 
 // handleJobStart handles the !job start command. It starts a job for the user.
-func handleJobStart(a *App, m *Message, splitCmd []string) error {
+func handleJobsStart(a *App, m *Message, splitCmd []string) error {
 	return nil
 }
 
