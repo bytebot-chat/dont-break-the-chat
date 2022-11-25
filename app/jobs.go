@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"time"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -18,8 +19,9 @@ type Job struct {
 	ID          uuid.UUID `json:"id"`          // The ID of the job
 	Name        string    `json:"name"`        // The name of the job
 	Description string    `json:"description"` // The description of the job
-	Duration    int       `json:"duration"`    // The duration of the job in seconds
 	Payout      int       `json:"payout"`      // Amount of currency the user gets for completing the job
+	CreatedAt   int64     `json:"created_at"`  // The time the job was created
+	ExpiresAt   int64     `json:"expires_at"`  // The time the job expires
 }
 
 // saveAvailableJobs saves the list of available jobs to the database
@@ -42,7 +44,12 @@ func (a *App) setAvailableJobs(p *Profile, jobs []Job) error {
 // InfoString returns a string containing the information about the job
 func (j *Job) InfoString() string {
 	// Name, Description, Duration, Payout
-	return fmt.Sprintf("**%s**\t%s\tDuration: %d\tPayout: %d", j.Name, j.Description, j.Duration, j.Payout)
+	return fmt.Sprintf("**%s**\t%s\tDuration: %d\tPayout: %d", j.Name, j.Description, j.Duration(), j.Payout)
+}
+
+// Duration returns the duration of the job in hours
+func (j *Job) Duration() int {
+	return int(j.ExpiresAt - j.CreatedAt)
 }
 
 // getAvailableJobs gets the aviailable jobs for the given user profile
@@ -73,10 +80,11 @@ func (a *App) generateJobs(p *Profile, count int) ([]Job, error) {
 		// Generate a new job
 		j := Job{
 			ID:          uuid.NewV4(),
-			Name:        "Job " + strconv.Itoa(i),         // TODO: Generate a random name
-			Description: "This is job " + strconv.Itoa(i), // TODO: Generate a random description
-			Duration:    rand.Intn((60*60*24)-300) + 300,  // 1 day + 300 seconds (5 minutes minimum, 1 day maximum)
-			Payout:      rand.Intn(950) + 50,              // 50 minimum, 1000 maximum
+			Name:        "Job " + strconv.Itoa(i),                                           // TODO: Generate a random name
+			Description: "This is job " + strconv.Itoa(i),                                   // TODO: Generate a random description
+			Payout:      rand.Intn(950) + 50,                                                // 50 minimum, 1000 maximum
+			CreatedAt:   time.Now().Unix(),                                                  // Now
+			ExpiresAt:   time.Now().Add(time.Duration(rand.Intn(24)+24) * time.Hour).Unix(), // 24-48 hours from now
 		}
 		// Add the job to the list of jobs
 		jobs = append(jobs, j)

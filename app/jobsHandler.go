@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 /*
@@ -25,10 +27,11 @@ The jobs system allows you to earn money by taking on randomized jobs.
 Jobs are scaled to your level, so the higher your level, the more money you can earn.
 
 ** Commands **
-- !jobs - Get a list of available jobs
-- !jobs help - Get help with the jobs system (you're looking at it)
-- !jobs list - Get a list of available jobs
-- !jobs take <job> - Take a job
+- !jobs 			- Get a list of available jobs
+- !jobs help 		- Get help with the jobs system (you're looking at it)
+- !jobs list 		- Get a list of available jobs
+- !jobs refresh 	- Refresh the list of available jobs
+- !jobs take <job> 	- Take a job
 `
 
 const jobsUnknownCommandResponse = `I don't know what you mean by that. Try !jobs help.`
@@ -62,6 +65,8 @@ func handleJobs(a *App, m *Message) error {
 	switch subCmd {
 	case "list":
 		return handleJobsList(a, m, splitCmd)
+	case "refresh":
+		return handleJobsRefresh(a, m, splitCmd)
 	case "start":
 		return handleJobsStart(a, m, splitCmd)
 	case "help":
@@ -83,18 +88,13 @@ func handleJobsList(a *App, m *Message, splitCmd []string) error {
 		return err
 	}
 
-	/* Commented out for now because I'm making sure we generate jobs correctly
-	// Check for existing jobs to be completed
+	// Check for existing available jobs
 	jobs, err := a.getAvailableJobs(profile)
 	// If there's a redis nil error, it means the user has no jobs so we skip error handling
 	// So we handle everything else
 	if err != nil && err.Error() != "redis: nil" {
 		return err
 	}
-	*/
-
-	// temporary empty jobs list
-	jobs := []Job{}
 
 	// If there are no jobs, tell the user in the channel
 	if len(jobs) == 0 {
@@ -137,7 +137,64 @@ func handleJobsList(a *App, m *Message, splitCmd []string) error {
 	return a.handleOutgoingMessage(msg)
 }
 
+// handleJobRefresh handles the !jobs refresh command. It generates a new list of jobs.
+func handleJobsRefresh(a *App, m *Message, splitCmd []string) error {
+	// Get the user's profile
+	// This also initializes the user's profile if it doesn't exist
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Msg("getting user profile")
+	profile, err := a.getProfile(m.Author.ID)
+	if err != nil {
+		return err
+	}
+
+	// Generate a new list of jobs
+	jobs, err := a.generateJobs(profile, 10)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error generating jobs")
+		m.RespondToChannelOrThread("dbtg", "Nobody's hiring, kid. Come back later.", true, false)
+		return err
+	}
+
+	// Set the jobs in redis and proceed with the rest of the function
+	err = a.setAvailableJobs(profile, jobs)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error setting jobs in redis")
+		m.RespondToChannelOrThread("dbtg", "I found some jobs for you but I lost the paperwork on the way over. Better luck next time.", true, false)
+		return err
+	}
+
+	// Respond to the user with the list of jobs
+	// TODO: This is a copy/paste of handleJobsList. Refactor this into a function.
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Msg("sending job list")
+
+	// Format a multi-line string with the job info
+	jobString := []string{}
+	jobString = append(jobString, "There's some folks looking for help. Here's what they need:")
+	jobString = append(jobString, "```") // Use a code block to make it look nice
+
+	// Loop through the jobs and append the info to the string
+	for _, job := range jobs {
+		jobString = append(jobString, job.InfoString())
+	}
+
+	jobString = append(jobString, "```")                                                  // Close the code block
+	jobString = append(jobString, "To take a job, type `!jobs take <job ID>`")            // Tell the user how to take a job
+	msg := m.RespondToChannelOrThread("dbtg", strings.Join(jobString, "\n"), true, false) // Generate a reply message
+	return a.handleOutgoingMessage(msg)                                                   // Send the message
+}
+
 // handleJobStart handles the !job start command. It starts a job for the user.
+// TODO: Make this work.
 func handleJobsStart(a *App, m *Message, splitCmd []string) error {
 	a.logger.Info().
 		Str("user", m.Author.Username).
