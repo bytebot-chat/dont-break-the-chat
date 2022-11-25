@@ -13,6 +13,8 @@ type Profile struct {
 	Inventory Inventory `json:"inventory"`
 	// The user's balance
 	Balance int `json:"balance"`
+	// Available jobs
+	AvailableJobs []Job `json:"available_jobs"`
 }
 
 // getProfile gets the profile for the given user ID.
@@ -51,6 +53,19 @@ func (a *App) getProfile(userID string) (*Profile, error) {
 	}
 
 	return &profile, nil
+}
+
+// saveProfile saves the profile to the database.
+func (p *Profile) save(a *App) error {
+	// Marshal the profile into a json string
+	profileBytes, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	// Save the profile to the database
+	// TODO: This looks prone to race conditions. Make it not that.
+	return a.redis.Set(a.context, "profile:"+p.ID, profileBytes, 0).Err()
 }
 
 // work is a method on the profile that handles the work command from chat.

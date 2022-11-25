@@ -16,6 +16,9 @@ jk there's no way to play yet
 ## Commands
 - !info - Get information about the game
 - !help - Get help with the game
+- !work - Work for money
+- !balance - Check your balance
+- !jobs - List available jobs and their requirements
 
 File an issue on Github at https://github.com/bytebot-chat/dont-break-the-chat/issues
 `
