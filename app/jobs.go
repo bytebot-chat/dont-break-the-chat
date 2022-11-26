@@ -49,6 +49,7 @@ type Job struct {
 	Payout      int       `json:"payout"`      // Amount of currency the user gets for completing the job
 	CreatedAt   int64     `json:"created_at"`  // The time the job was created
 	ExpiresAt   int64     `json:"expires_at"`  // The time the job expires
+	Completed   bool      `json:"completed"`   // Whether or not the job has been completed
 }
 
 // work does the work for the given job
@@ -76,14 +77,22 @@ func (j *Job) work(a *App, userID string) error {
 	// Update the user's balance with the payout
 	profile.Balance += payout
 
+	// Set the job as completed
+	profile.ActiveJob.Completed = true
+
 	// Save the user's profile
 	err = profile.save(a)
 	if err != nil {
+		a.logger.Error().
+			Err(err).
+			Str("user", userID).
+			Str("job", j.ID.String()).
+			Msg("Failed to save user profile after completing job")
 		return err
 	}
 
 	// Log the job completion
-	a.logger.Debug().
+	a.logger.Info().
 		Str("user", userID).
 		Str("job", j.ID.String()).
 		Int("duration", duration).
@@ -149,11 +158,12 @@ func (a *App) generateJobs(p *Profile, count int) ([]Job, error) {
 		name, desc := generateJobNameAndDescription()
 		j := Job{
 			ID:          uuid.NewV4(),
-			Name:        name,                                                               // TODO: Generate a random name
-			Description: desc,                                                               // TODO: Generate a random description
-			Payout:      rand.Intn(950) + 50,                                                // 50 minimum, 1000 maximum
-			CreatedAt:   time.Now().Unix(),                                                  // Now
-			ExpiresAt:   time.Now().Add(time.Duration(rand.Intn(24)+24) * time.Hour).Unix(), // 24-48 hours from now
+			Name:        name,                                           // TODO: Generate a random name
+			Description: desc,                                           // TODO: Generate a random description
+			Payout:      rand.Intn(950) + 50,                            // 50 minimum, 1000 maximum
+			CreatedAt:   time.Now().Unix(),                              // Now
+			ExpiresAt:   time.Now().Unix() + int64(rand.Intn(3600)+300), // 5-60 minutes from now
+			Completed:   false,
 		}
 		// Add the job to the list of jobs
 		jobs = append(jobs, j)

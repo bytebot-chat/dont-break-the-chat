@@ -363,12 +363,21 @@ func handleJobsActive(a *App, m *Message, splitCmd []string) error {
 		Str("user", m.Author.Username).
 		Msg("User profile retrieved")
 
-	// Check if the user has an active job
+	// Check if the user has an empty ActiveJob field
+	// This they have never been assigned a job
 	if profile.ActiveJob.ID.String() == "00000000-0000-0000-0000-000000000000" { // A zero UUID is the default value for an empty uuid.UUID
 		a.logger.Info().
 			Str("user", m.Author.Username).
 			Msg("User has no active job")
-		return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", "You don't have an active job right now. Type `!jobs list` to see a list of available jobs.", true, false))
+		return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", "What are you doing? You don't have a job! Go look at the board!", true, false))
+	}
+
+	// Check if the user has completed their active job
+	if profile.ActiveJob.Completed {
+		a.logger.Info().
+			Str("user", m.Author.Username).
+			Msg("User has completed their active job")
+		return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", fmt.Sprintf("You're done here! I sent your %d credits to your mom already. Grab another one and get out of my hair.", profile.ActiveJob.Payout), true, false))
 	}
 
 	// Construct the message
