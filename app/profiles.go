@@ -6,13 +6,18 @@ import (
 	"strconv"
 )
 
+// Prefix for consistent key names in the database.
+const REDIS_PROFILE_PREFIX = "profile:"
+
+// Profile is a struct that represents a user's profile.
+// It's the main data structure for the game and tracks the state for a user.
+// State is maintained in redis under the top-level key "profile:<user_id>".
+// Profiles have the ID field of the user to facilitate lookups and writing the profile back to Redis.
 type Profile struct {
-	// The unique ID of the profile. This is the same as the snowflake ID of the user in Discord.
-	ID string `json:"id"`
-	// The user's inventory
-	Inventory Inventory `json:"inventory"`
-	// The user's balance
-	Balance int `json:"balance"`
+	ID        string    `json:"id"`          // The unique ID of the profile. This is the same as the snowflake ID of the user in Discord.
+	Inventory Inventory `json:"inventory"`   // The user's inventory
+	Balance   int       `json:"balance"`     // The user's available spending balance
+	ActiveJob Job       `json:"current_job"` // Active job
 }
 
 // getProfile gets the profile for the given user ID.
@@ -53,6 +58,19 @@ func (a *App) getProfile(userID string) (*Profile, error) {
 	return &profile, nil
 }
 
+// saveProfile saves the profile to the database.
+func (p *Profile) save(a *App) error {
+	// Marshal the profile into a json string
+	profileBytes, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	// Save the profile to the database
+	// TODO: This looks prone to race conditions. Make it not that.
+	return a.redis.Set(a.context, "profile:"+p.ID, profileBytes, 0).Err()
+}
+
 // work is a method on the profile that handles the work command from chat.
 // It should generate some amount of currency and add it to the user's balance.
 // This method will eventually take the user's profile and return a scaled or leveled amount of currency.
@@ -75,7 +93,7 @@ func (p *Profile) work(a *App) (int, error) {
 	}
 
 	// Save the profile to the database
-	err = a.redis.Set(a.context, "profile:"+p.ID, profileBytes, 0).Err()
+	err = a.redis.Set(a.context, REDIS_PROFILE_PREFIX+":"+p.ID, profileBytes, 0).Err()
 	if err != nil {
 		return 0, err
 	}
