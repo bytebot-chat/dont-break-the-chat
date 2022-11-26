@@ -14,11 +14,10 @@ const REDIS_PROFILE_PREFIX = "profile:"
 // State is maintained in redis under the top-level key "profile:<user_id>".
 // Profiles have the ID field of the user to facilitate lookups and writing the profile back to Redis.
 type Profile struct {
-	ID            string    `json:"id"`             // The unique ID of the profile. This is the same as the snowflake ID of the user in Discord.
-	Inventory     Inventory `json:"inventory"`      // The user's inventory
-	Balance       int       `json:"balance"`        // The user's available spending balance
-	AvailableJobs []Job     `json:"available_jobs"` // Jobs available to the user to work
-	ActiveJob     Job       `json:"current_job"`    // Active job
+	ID        string    `json:"id"`          // The unique ID of the profile. This is the same as the snowflake ID of the user in Discord.
+	Inventory Inventory `json:"inventory"`   // The user's inventory
+	Balance   int       `json:"balance"`     // The user's available spending balance
+	ActiveJob Job       `json:"current_job"` // Active job
 }
 
 // getProfile gets the profile for the given user ID.

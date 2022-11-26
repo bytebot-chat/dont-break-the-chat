@@ -2,6 +2,8 @@ package app
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,6 +70,8 @@ func handleJobs(a *App, m *Message) error {
 	case "refresh":
 		return handleJobsRefresh(a, m, splitCmd)
 	case "start":
+		return handleJobsStart(a, m, splitCmd)
+	case "take":
 		return handleJobsStart(a, m, splitCmd)
 	case "help":
 		return handleJobsHelp(a, m, splitCmd)
@@ -194,12 +198,117 @@ func handleJobsRefresh(a *App, m *Message, splitCmd []string) error {
 }
 
 // handleJobStart handles the !job start command. It starts a job for the user.
-// TODO: Make this work.
+// Jobs are stored in a slice in the user's profile
+// Profile -> Jobs -> Job by index
+// An active job must be removed from the AvailableJobs slice and added to the ActiveJobs field
+// And then a goroutine must be started to act as a timer for the job.
+// It should sleep for the duration of the job and then grant the user the reward and remove the job from the ActiveJobs slice when it returns.
 func handleJobsStart(a *App, m *Message, splitCmd []string) error {
+
+	// Make sure splitCmd is not empty and contains an integer
+	if len(splitCmd) == 0 {
+		a.logger.Info().
+			Str("user", m.Author.Username).
+			Msg("no job ID provided")
+		a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", "You need to provide a job ID. Type `!jobs list` to see a list of available jobs.", true, false))
+		return errors.New("no job ID provided")
+	}
+
+	// Make sure splitCmd[0] is a valid, positive integer
+	jobID, err := strconv.Atoi(splitCmd[0])
+	if err != nil || jobID < 0 {
+		a.logger.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error converting job ID to valid integer for indexing")
+		a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", "That's not a valid job ID. Type `!jobs list` to see a list of available jobs.", true, false))
+		return err
+	}
+
+	// Get the user's profile
+	profile, err := a.getProfile(m.Author.ID)
+	if err != nil {
+		a.logger.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error getting user profile")
+		return err
+	}
 	a.logger.Info().
 		Str("user", m.Author.Username).
-		Msg("User requested to start a job")
-	return nil
+		Msg("User profile retrieved")
+
+	// Check for existing available jobs
+	jobs, err := a.getAvailableJobs(profile)
+	if err != nil {
+		a.logger.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error getting available jobs")
+		return err
+	}
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Msgf("%d available jobs retrieved", len(jobs))
+
+	// Make sure the job ID is valid
+	if jobID < 0 || jobID >= len(jobs) {
+		a.logger.Error().
+			Str("user", m.Author.Username).
+			Int("jobID", jobID).
+			Int("numJobs", len(jobs)).
+			Msg("Invalid job ID: job ID out of range")
+		return errors.New("invalid job ID")
+	}
+
+	// Assign the job to the user's ActiveJob field
+	// Make a copy of the job so we don't modify the original
+	activeJob := jobs[jobID]
+	profile.ActiveJob = activeJob
+
+	// Save profile
+	err = profile.save(a)
+	if err != nil {
+		a.logger.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error saving profile")
+		return err
+	}
+
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Str("job", profile.ActiveJob.Name).
+		Str("id", profile.ActiveJob.ID.String()).
+		Msg("Job assigned to user")
+
+	// Remove the job from the AvailableJobs slice
+	// and tell the app to save the jobs to the database
+	jobs = append(jobs[:jobID], jobs[jobID+1:]...)
+	err = a.setAvailableJobs(profile, jobs)
+	if err != nil {
+		a.logger.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error saving profile")
+		return err
+	}
+
+	// Start a goroutine to act as a timer for the job
+	go profile.ActiveJob.work(a, profile.ID)
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Str("job", profile.ActiveJob.Name).
+		Str("id", profile.ActiveJob.ID.String()).
+		Msg("Job started")
+
+	// Construct a message to send to the user with the job info and a timer
+	jobAcceptedMessage := fmt.Sprintf("'%s', eh? I'll let the boss know you're on that one. Get lost.", profile.ActiveJob.Name)
+	jobAcceptedMessage += fmt.Sprintf(" You've got %d seconds to get it done.", profile.ActiveJob.Duration())
+	jobAcceptedMessage += fmt.Sprintf(" If you don't get it done in time, I'll be taking your %d credits.", profile.ActiveJob.Payout)
+
+	// Send the message
+	return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", jobAcceptedMessage, true, false))
 }
 
 // handleJobHelp handles the !job help command. It displays help for the job system.
