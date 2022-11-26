@@ -73,6 +73,8 @@ func handleJobs(a *App, m *Message) error {
 		return handleJobsStart(a, m, splitCmd)
 	case "take":
 		return handleJobsStart(a, m, splitCmd)
+	case "active":
+		return handleJobsActive(a, m, splitCmd)
 	case "help":
 		return handleJobsHelp(a, m, splitCmd)
 	default:
@@ -132,8 +134,8 @@ func handleJobsList(a *App, m *Message, splitCmd []string) error {
 	jobString := []string{}
 	jobString = append(jobString, "There's some folks looking for help. Here's what they need:\n")
 	jobString = append(jobString, "```")
-	for _, job := range jobs {
-		jobString = append(jobString, job.InfoString())
+	for i, job := range jobs {
+		jobString = append(jobString, fmt.Sprintf("%d - %s", i, job.Name))
 	}
 	jobString = append(jobString, "```")
 	jobString = append(jobString, "To take a job, type `!jobs take <job ID>`")
@@ -187,8 +189,8 @@ func handleJobsRefresh(a *App, m *Message, splitCmd []string) error {
 	jobString = append(jobString, "```") // Use a code block to make it look nice
 
 	// Loop through the jobs and append the info to the string
-	for _, job := range jobs {
-		jobString = append(jobString, job.InfoString())
+	for i, job := range jobs {
+		jobString = append(jobString, fmt.Sprintf("%d - %s", i, job.Name))
 	}
 
 	jobString = append(jobString, "```")                                                  // Close the code block
@@ -340,4 +342,40 @@ func handleJobsUnknownCommand(a *App, m *Message, splitCmd []string) error {
 	msg := m.RespondToChannelOrThread("dbtg", help, true, false)
 
 	return a.handleOutgoingMessage(msg)
+}
+
+// handleJobsActive handles the !jobs active command. It displays the user's active job.
+func handleJobsActive(a *App, m *Message, splitCmd []string) error {
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Msg("User requested active job")
+
+	// Get the user's profile
+	profile, err := a.getProfile(m.Author.ID)
+	if err != nil {
+		a.logger.Error().
+			Err(err).
+			Str("user", m.Author.Username).
+			Msg("error getting user profile")
+		return err
+	}
+	a.logger.Info().
+		Str("user", m.Author.Username).
+		Msg("User profile retrieved")
+
+	// Check if the user has an active job
+	if profile.ActiveJob.ID.String() == "00000000-0000-0000-0000-000000000000" { // A zero UUID is the default value for an empty uuid.UUID
+		a.logger.Info().
+			Str("user", m.Author.Username).
+			Msg("User has no active job")
+		return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", "You don't have an active job right now. Type `!jobs list` to see a list of available jobs.", true, false))
+	}
+
+	// Construct the message
+	msg := fmt.Sprintf("You're currently working on '%s'.", profile.ActiveJob.Name)
+	msg += fmt.Sprintf(" You've got %d seconds to get it done.", profile.ActiveJob.timeRemaining())
+	msg += fmt.Sprintf(" If you don't get it done in time, I'll be taking your %d credits.", profile.ActiveJob.Payout)
+
+	// Send the message
+	return a.handleOutgoingMessage(m.RespondToChannelOrThread("dbtg", msg, true, false))
 }

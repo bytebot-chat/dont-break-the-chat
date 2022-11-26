@@ -110,15 +110,14 @@ func (a *App) setAvailableJobs(p *Profile, jobs []Job) error {
 	return nil
 }
 
-// InfoString returns a string containing the information about the job
-func (j *Job) InfoString() string {
-	// Name, Description, Duration, Payout
-	return fmt.Sprintf("**%s**\t%s\tDuration: %d\tPayout: %d", j.Name, j.Description, j.Duration(), j.Payout)
-}
-
 // Duration returns the duration of the job in hours
 func (j *Job) Duration() int {
 	return int(j.ExpiresAt - j.CreatedAt)
+}
+
+// timeRemaining returns the time remaining for the job in seconds
+func (j *Job) timeRemaining() int {
+	return int(j.ExpiresAt - time.Now().Unix())
 }
 
 // getAvailableJobs gets the available jobs for the given user profile
